@@ -713,11 +713,12 @@ public class PlacementGuide extends PrinterUtils {
                         if (requiredFacing != currentFacing) {
                             BreakManager.addBlockToBreak(ctx);
                         } else {
-                            // Check if the only difference is the output signal (POWERED state)
-                            // which could be caused by container fullness
-                            boolean onlyPoweredDiffers = ctx.requiredState.getValue(ComparatorBlock.POWERED) != ctx.currentState.getValue(ComparatorBlock.POWERED);
+                            // At this point, MODE and FACING are correct, so the only remaining difference
+                            // that causes WRONG_STATE is the POWERED property (output signal strength)
+                            // Check if POWERED differs - this could be due to container fullness
+                            boolean poweredDiffers = ctx.requiredState.getValue(ComparatorBlock.POWERED) != ctx.currentState.getValue(ComparatorBlock.POWERED);
                             
-                            if (onlyPoweredDiffers) {
+                            if (poweredDiffers) {
                                 // Check for containers behind the comparator that might be causing the signal difference
                                 Direction behindDirection = requiredFacing.getOpposite();
                                 BlockContext behind1 = ctx.offset(behindDirection);
