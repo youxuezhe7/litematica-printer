@@ -1,5 +1,6 @@
 package me.aleksilassila.litematica.printer.printer;
 
+import me.aleksilassila.litematica.printer.Debug;
 import me.aleksilassila.litematica.printer.bilixwhite.utils.PlaceUtils;
 import me.aleksilassila.litematica.printer.bilixwhite.utils.PreprocessUtils;
 import me.aleksilassila.litematica.printer.config.Configs;
@@ -25,6 +26,7 @@ import net.minecraft.world.level.portal.PortalShape;
 import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.spongepowered.asm.logging.ILogger;
 
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
@@ -704,11 +706,58 @@ public class PlacementGuide extends PrinterUtils {
                                     ctx.requiredState.getValue(RepeaterBlock.LOCKED) == ctx.currentState.getValue(RepeaterBlock.LOCKED)
                     ) BreakManager.addBlockToBreak(ctx);
                 }
+
                 case COMPARATOR -> {
                     if (ctx.requiredState.getValue(ComparatorBlock.MODE) != ctx.currentState.getValue(ComparatorBlock.MODE))
                         return new ClickAction();
-                    else if (printerBreakWrongStateBlock) BreakManager.addBlockToBreak(ctx);
+                    else if (printerBreakWrongStateBlock) {
+                        // Check if FACING property is different - must break if it is
+                        Direction requiredFacing = ctx.requiredState.getValue(ComparatorBlock.FACING);
+//                        获取到的方向为比较器输出指向输入端的方向
+                        Debug.alwaysWrite("Property:",ctx.getRequiredStateProperty(ComparatorBlock.FACING));
+                        Direction currentFacing = ctx.currentState.getValue(ComparatorBlock.FACING);
+
+
+                        if (requiredFacing != currentFacing) { //与投影朝向不同
+                            BreakManager.addBlockToBreak(ctx);
+                        } else {
+
+                            int currentSignal = ctx.level.getSignal(ctx.blockPos, requiredFacing);
+                            Debug.alwaysWrite("所放比较器信号强度: " + currentSignal);
+                            int requiredSignal = ctx.schematic.getSignal(ctx.blockPos, requiredFacing);
+                            Debug.alwaysWrite("投影比较器信号强度: " + requiredSignal);
+
+                            // Check if signal strength differs - this could be due to container fullness
+                            if (currentSignal != requiredSignal) { //与投影比较器输出信号不同
+
+                                BlockContext behind_first_block = ctx.offset(requiredFacing);
+
+                                // Check if there's a container (BaseEntityBlock) directly behind
+                                if (behind_first_block.requiredState.getBlock() instanceof BaseEntityBlock) {
+
+                                    Debug.alwaysWrite("**********");
+                                    Debug.alwaysWrite(behind_first_block.requiredState.getBlock());
+                                    Debug.alwaysWrite("比较器直接检测容器，跳过破坏");
+
+                                    return null;
+                                }
+
+                                if (behind_first_block.requiredState.isRedstoneConductor(behind_first_block.level, behind_first_block.blockPos)) {
+                                    BlockContext behind_second_block = behind_first_block.offset(requiredFacing);
+                                    if (behind_second_block.requiredState.getBlock() instanceof BaseEntityBlock) {
+                                        Debug.alwaysWrite("**********");
+                                        Debug.alwaysWrite(behind_second_block.requiredState.getBlock());
+                                        Debug.write("比较器间接检测容器，跳过破坏");
+                                        return null;
+                                    }
+                                }
+                            }
+
+                            BreakManager.addBlockToBreak(ctx);
+                        }
+                    }
                 }
+
                 case NOTE_BLOCK -> {
                     if (Configs.Print.NOTE_BLOCK_TUNING.getBooleanValue() && !Objects.equals(ctx.requiredState.getValue(NoteBlock.NOTE), ctx.currentState.getValue(NoteBlock.NOTE)))
                         return new ClickAction();
