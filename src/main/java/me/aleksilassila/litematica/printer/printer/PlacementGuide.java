@@ -718,7 +718,7 @@ public class PlacementGuide extends PrinterUtils {
                             Direction behindDirection = requiredFacing.getOpposite();
                             BlockContext behind1 = ctx.offset(behindDirection);
                             
-                            // Check if there's a container (EntityBlock) directly behind
+                            // Check if there's a container (BaseEntityBlock) directly behind
                             if (behind1.requiredState.getBlock() instanceof BaseEntityBlock) {
                                 // Skip breaking - container might be causing the POWERED state difference
                                 return null;
