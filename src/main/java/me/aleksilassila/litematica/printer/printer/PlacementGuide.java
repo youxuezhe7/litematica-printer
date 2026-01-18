@@ -714,16 +714,24 @@ public class PlacementGuide extends PrinterUtils {
                             // FACING is different, break it
                             BreakManager.addBlockToBreak(ctx);
                         } else {
-                            // FACING is the same, so POWERED must be different
-                            // Check the block behind the comparator (opposite to its facing direction)
-                            Direction behindDirection = requiredFacing.getOpposite();
-                            BlockContext behindContext = ctx.offset(behindDirection);
+                            // FACING is the same, check if POWERED is different
+                            boolean requiredPowered = ctx.requiredState.getValue(ComparatorBlock.POWERED);
+                            boolean currentPowered = ctx.currentState.getValue(ComparatorBlock.POWERED);
                             
-                            // Check if the block behind is NOT an EntityBlock
-                            if (!(behindContext.requiredState.getBlock() instanceof BaseEntityBlock)) {
+                            if (requiredPowered != currentPowered) {
+                                // POWERED is different, check the block behind the comparator
+                                Direction behindDirection = requiredFacing.getOpposite();
+                                BlockContext behindContext = ctx.offset(behindDirection);
+                                
+                                // Only break if the block behind is NOT an EntityBlock (container)
+                                if (!(behindContext.requiredState.getBlock() instanceof BaseEntityBlock)) {
+                                    BreakManager.addBlockToBreak(ctx);
+                                }
+                                // If it IS an EntityBlock, skip (do nothing)
+                            } else {
+                                // If POWERED is also the same, break it (some other property must be wrong)
                                 BreakManager.addBlockToBreak(ctx);
                             }
-                            // If it IS an EntityBlock, skip (do nothing)
                         }
                     }
                 }
