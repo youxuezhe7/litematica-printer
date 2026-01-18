@@ -705,7 +705,27 @@ public class PlacementGuide extends PrinterUtils {
                 case COMPARATOR -> {
                     if (ctx.requiredState.getValue(ComparatorBlock.MODE) != ctx.currentState.getValue(ComparatorBlock.MODE))
                         return new ClickAction();
-                    else if (printerBreakWrongStateBlock) BreakManager.addBlockToBreak(ctx);
+                    else if (printerBreakWrongStateBlock) {
+                        // Check if FACING is different
+                        Direction requiredFacing = ctx.requiredState.getValue(ComparatorBlock.FACING);
+                        Direction currentFacing = ctx.currentState.getValue(ComparatorBlock.FACING);
+                        
+                        if (requiredFacing != currentFacing) {
+                            // FACING is different, break it
+                            BreakManager.addBlockToBreak(ctx);
+                        } else {
+                            // FACING is the same, so POWERED must be different
+                            // Check the block behind the comparator (opposite to its facing direction)
+                            Direction behindDirection = requiredFacing.getOpposite();
+                            BlockContext behindContext = ctx.offset(behindDirection);
+                            
+                            // Check if the block behind is NOT an EntityBlock
+                            if (!(behindContext.requiredState.getBlock() instanceof BaseEntityBlock)) {
+                                BreakManager.addBlockToBreak(ctx);
+                            }
+                            // If it IS an EntityBlock, skip (do nothing)
+                        }
+                    }
                 }
                 case NOTE_BLOCK -> {
                     if (Configs.Put.NOTE_BLOCK_TUNING.getBooleanValue() && !Objects.equals(ctx.requiredState.getValue(NoteBlock.NOTE), ctx.currentState.getValue(NoteBlock.NOTE)))
