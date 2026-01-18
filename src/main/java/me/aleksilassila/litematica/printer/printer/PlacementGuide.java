@@ -705,7 +705,39 @@ public class PlacementGuide extends PrinterUtils {
                 case COMPARATOR -> {
                     if (ctx.requiredState.getValue(ComparatorBlock.MODE) != ctx.currentState.getValue(ComparatorBlock.MODE))
                         return new ClickAction();
-                    else if (printerBreakWrongStateBlock) BreakManager.addBlockToBreak(ctx);
+                    else if (printerBreakWrongStateBlock) {
+                        // Check if FACING property is different - must break if it is
+                        Direction requiredFacing = ctx.requiredState.getValue(ComparatorBlock.FACING);
+                        Direction currentFacing = ctx.currentState.getValue(ComparatorBlock.FACING);
+                        
+                        if (requiredFacing != currentFacing) {
+                            BreakManager.addBlockToBreak(ctx);
+                        } else {
+                            // FACING is correct but state is still WRONG_STATE (e.g., POWERED mismatch)
+                            // Check for containers behind the comparator that might be causing the state difference
+                            Direction behindDirection = requiredFacing.getOpposite();
+                            BlockContext behind1 = ctx.offset(behindDirection);
+                            
+                            // Check if there's a container (EntityBlock) directly behind
+                            if (behind1.requiredState.getBlock() instanceof BaseEntityBlock) {
+                                // Skip breaking - container might be causing the POWERED state difference
+                                return null;
+                            }
+                            
+                            // Check if behind1 is a redstone conductor (solid block)
+                            if (behind1.requiredState.isRedstoneConductor(behind1.level, behind1.blockPos)) {
+                                // Check second position behind for container
+                                BlockContext behind2 = behind1.offset(behindDirection);
+                                if (behind2.requiredState.getBlock() instanceof BaseEntityBlock) {
+                                    // Skip breaking - container through solid block might be causing the state difference
+                                    return null;
+                                }
+                            }
+                            
+                            // No skip conditions met, break the comparator
+                            BreakManager.addBlockToBreak(ctx);
+                        }
+                    }
                 }
                 case NOTE_BLOCK -> {
                     if (Configs.Put.NOTE_BLOCK_TUNING.getBooleanValue() && !Objects.equals(ctx.requiredState.getValue(NoteBlock.NOTE), ctx.currentState.getValue(NoteBlock.NOTE)))
