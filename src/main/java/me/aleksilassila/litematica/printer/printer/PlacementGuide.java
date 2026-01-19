@@ -710,53 +710,35 @@ public class PlacementGuide extends PrinterUtils {
                 case COMPARATOR -> {
                     if (ctx.requiredState.getValue(ComparatorBlock.MODE) != ctx.currentState.getValue(ComparatorBlock.MODE))
                         return new ClickAction();
-                    else if (printerBreakWrongStateBlock) {
-                        // Check if FACING property is different - must break if it is
-                        Direction requiredFacing = ctx.requiredState.getValue(ComparatorBlock.FACING);
-//                        获取到的方向为比较器输出指向输入端的方向
-                        Debug.alwaysWrite("Property:",ctx.getRequiredStateProperty(ComparatorBlock.FACING));
-                        Direction currentFacing = ctx.currentState.getValue(ComparatorBlock.FACING);
 
+                    if (printerBreakWrongStateBlock) {
+                        Direction facing = ctx.requiredState.getValue(ComparatorBlock.FACING);
 
-                        if (requiredFacing != currentFacing) { //与投影朝向不同
+                        //检验朝向
+                        if (facing != ctx.currentState.getValue(ComparatorBlock.FACING)) {
                             BreakManager.addBlockToBreak(ctx);
-                        } else {
+                        }
 
-                            int currentSignal = ctx.level.getSignal(ctx.blockPos, requiredFacing);
-                            Debug.alwaysWrite("所放比较器信号强度: " + currentSignal);
-                            int requiredSignal = ctx.schematic.getSignal(ctx.blockPos, requiredFacing);
-                            Debug.alwaysWrite("投影比较器信号强度: " + requiredSignal);
+                        BlockContext input = ctx.offset(facing);
 
-                            // Check if signal strength differs - this could be due to container fullness
-                            if (currentSignal != requiredSignal) { //与投影比较器输出信号不同
-
-                                BlockContext behind_first_block = ctx.offset(requiredFacing);
-
-                                // Check if there's a container (BaseEntityBlock) directly behind
-                                if (behind_first_block.requiredState.getBlock() instanceof BaseEntityBlock) {
-
-                                    Debug.alwaysWrite("**********");
-                                    Debug.alwaysWrite(behind_first_block.requiredState.getBlock());
-                                    Debug.alwaysWrite("比较器直接检测容器，跳过破坏");
-
+                        //检验输出信号
+                        if(ctx.level.getSignal(ctx.blockPos, facing) != ctx.schematic.getSignal(ctx.blockPos, facing)) {
+                                if (input.requiredState.hasAnalogOutputSignal()) {
                                     return null;
                                 }
 
-                                if (behind_first_block.requiredState.isRedstoneConductor(behind_first_block.level, behind_first_block.blockPos)) {
-                                    BlockContext behind_second_block = behind_first_block.offset(requiredFacing);
-                                    if (behind_second_block.requiredState.getBlock() instanceof BaseEntityBlock) {
-                                        Debug.alwaysWrite("**********");
-                                        Debug.alwaysWrite(behind_second_block.requiredState.getBlock());
-                                        Debug.write("比较器间接检测容器，跳过破坏");
+                                //检验输入端非透明方块
+                                if (input.requiredState.isRedstoneConductor(input.level, input.blockPos)) {
+                                    BlockContext behind_input = input.offset(facing);
+                                    if (behind_input.requiredState.hasAnalogOutputSignal()) {
                                         return null;
                                     }
                                 }
-                            }
-
-                            BreakManager.addBlockToBreak(ctx);
                         }
+                    BreakManager.addBlockToBreak(ctx);
                     }
                 }
+
 
                 case NOTE_BLOCK -> {
                     if (Configs.Print.NOTE_BLOCK_TUNING.getBooleanValue() && !Objects.equals(ctx.requiredState.getValue(NoteBlock.NOTE), ctx.currentState.getValue(NoteBlock.NOTE)))
