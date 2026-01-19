@@ -1,6 +1,5 @@
 package me.aleksilassila.litematica.printer.printer;
 
-import me.aleksilassila.litematica.printer.Debug;
 import me.aleksilassila.litematica.printer.bilixwhite.utils.PlaceUtils;
 import me.aleksilassila.litematica.printer.bilixwhite.utils.PreprocessUtils;
 import me.aleksilassila.litematica.printer.config.Configs;
@@ -26,10 +25,10 @@ import net.minecraft.world.level.portal.PortalShape;
 import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.spongepowered.asm.logging.ILogger;
 
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
+
 
 public class PlacementGuide extends PrinterUtils {
     @SuppressWarnings("all")
@@ -719,18 +718,19 @@ public class PlacementGuide extends PrinterUtils {
                             BreakManager.addBlockToBreak(ctx);
                         }
 
-                        BlockContext input = ctx.offset(facing);
+                        BlockContext facingBlockCtx = ctx.offset(facing);
 
                         //检验输出信号
+
                         if(ctx.level.getSignal(ctx.blockPos, facing) != ctx.schematic.getSignal(ctx.blockPos, facing)) {
-                                if (input.requiredState.hasAnalogOutputSignal()) {
+                                if (facingBlockCtx.requiredState.hasAnalogOutputSignal()) {
                                     return null;
                                 }
 
                                 //检验输入端非透明方块
-                                if (input.requiredState.isRedstoneConductor(input.level, input.blockPos)) {
-                                    BlockContext behind_input = input.offset(facing);
-                                    if (behind_input.requiredState.hasAnalogOutputSignal()) {
+                                if (facingBlockCtx.requiredState.isRedstoneConductor(facingBlockCtx.level, facingBlockCtx.blockPos)) {
+                                    BlockContext facingSecondBlockCtx = facingBlockCtx.offset(facing);
+                                    if (facingSecondBlockCtx.requiredState.hasAnalogOutputSignal()) {
                                         return null;
                                     }
                                 }
@@ -738,7 +738,6 @@ public class PlacementGuide extends PrinterUtils {
                     BreakManager.addBlockToBreak(ctx);
                     }
                 }
-
 
                 case NOTE_BLOCK -> {
                     if (Configs.Print.NOTE_BLOCK_TUNING.getBooleanValue() && !Objects.equals(ctx.requiredState.getValue(NoteBlock.NOTE), ctx.currentState.getValue(NoteBlock.NOTE)))
